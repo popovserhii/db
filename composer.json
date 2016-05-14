@@ -1,0 +1,28 @@
+{
+  "name": "agerecompany/db",
+  "description": "Simple PDO wrapper with support multiple insert/update",
+  "type": "library",
+  "license": "MIT",
+  "keywords": [
+    "db",
+    "pdo",
+    "agere"
+  ],
+  "authors": [
+    {
+      "name": "Sergiy Popov",
+      "email": "popow.sergiy@gmail.com",
+      "homepage": "http://agere.com.ua/",
+      "role": "Developer"
+    }
+  ],
+  "minimum-stability": "dev",
+  "require": {
+    "php": "^5.5"
+  },
+  "autoload": {
+    "psr-0": {
+      "Agere\\Db": "src/"
+    }
+  }
+}
