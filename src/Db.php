@@ -10,6 +10,7 @@
 namespace Agere\Db;
 
 use PDO;
+use PDOStatement;
 use Zend\Stdlib\Exception;
 
 class Db
@@ -114,9 +115,10 @@ class Db
 
     protected function lazyLoad()
     {
-        if (!$this->pdo) {
+        if ($this->pdo != null) {
             return $this->pdo;
         }
+
         $options = [
             \PDO::MYSQL_ATTR_INIT_COMMAND => 'SET NAMES utf8',
             \PDO::MYSQL_ATTR_FOUND_ROWS => true,
@@ -140,7 +142,7 @@ class Db
         return $dsn;
     }
 
-    function query($query)
+    public function query($query)
     {
         $this->query = $query;
         $res = $this->lazyLoad()->query($query);
@@ -190,7 +192,7 @@ class Db
      * @param string $query
      * @return array $allData
      */
-    function fetchAssoc($query)
+    public function fetchAssoc($query)
     {
         $data = [];
         $result = $this->query($query);
@@ -215,7 +217,7 @@ class Db
      * @param string $str
      * @return string
      */
-    function escapeQuery($str)
+    public function escapeQuery($str)
     {
         return strtr($str, [
             "\0" => "",
@@ -228,7 +230,7 @@ class Db
         ]);
     }
 
-    function addSet($fields)
+    public function addSet($fields)
     {
         $set = [];
         foreach ($fields as $field => $value) {
@@ -240,7 +242,7 @@ class Db
         return implode(',', $set);
     }
 
-    function addField($table, $fields, $htmlAdaptation = null)
+    public function addField($table, $fields, $htmlAdaptation = null)
     {
         if ($htmlAdaptation === true) {
             foreach ($fields as $key => $value) {
@@ -254,7 +256,7 @@ class Db
         return $this->lastInsertId();
     }
 
-    function updateField($table, $fields, $where = '1>0', $htmlAdaptation = null)
+    public function updateField($table, $fields, $where = '1>0', $htmlAdaptation = null)
     {
         if ($htmlAdaptation === true) {
             foreach ($fields as $key => $value) {
@@ -507,7 +509,7 @@ class Db
 
     /**
      * Generates a named template.
-     * $Db->prepare("INSERT INTO folks (name, addr, city) value (:name, :addr, :city)");
+     * $db->prepare("INSERT INTO folks (name, addr, city) value (:name, :addr, :city)");
      *
      * @param string $key Array key
      * @param string $value Array value
@@ -573,9 +575,12 @@ class Db
      *
      * @param string $name
      * @param mixed $arguments
+     * @return PDOStatement|null
      */
-    public function __call($name, ...$arguments)
+    public function __call($name, $arguments)
     {
-        return $this->lazyLoad()->{$name}(...$arguments); //@FIXME
+        $pdo = $this->lazyLoad();
+        //return $pdo->{$name}($arguments[0]); //@FIXME
+        return call_user_func_array([$pdo, $name], $arguments);
     }
 }
