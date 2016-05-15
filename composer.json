@@ -23,7 +23,7 @@
   },
   "autoload": {
     "psr-4": {
-      "Agere\\Db": "src/"
+      "Agere\\Db\\": "src/"
     }
   }
 }
