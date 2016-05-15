@@ -22,7 +22,7 @@
     "zendframework/zend-stdlib": "^2.7"
   },
   "autoload": {
-    "psr-0": {
+    "psr-4": {
       "Agere\\Db": "src/"
     }
   }
