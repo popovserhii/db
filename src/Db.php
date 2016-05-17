@@ -110,7 +110,7 @@ class Db
 
     public function getPdo()
     {
-        return $this->pdo;
+        return $this->lazyLoad();
     }
 
     protected function lazyLoad()
