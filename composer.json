@@ -18,7 +18,7 @@
   ],
   "minimum-stability": "dev",
   "require": {
-    "php": "^5.5",
+    "php": ">=5.5",
     "zendframework/zend-stdlib": "^2.7"
   },
   "autoload": {
