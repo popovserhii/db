@@ -16,7 +16,7 @@
       "role": "Developer"
     }
   ],
-  "minimum-stability": "dev",
+  "minimum-stability": "prefer-stable",
   "require": {
     "php": ">=5.5",
     "zendframework/zend-stdlib": "^2.7"
