@@ -77,7 +77,7 @@ class Db
      */
     public static $mysqlWords = ["CURRENT_TIMESTAMP", "NOW()", "NULL"];
 
-    private function __construct($db = '', $host = '', $user = '', $pass = '', $port = 3306)
+    public function __construct($db = '', $host = '', $user = '', $pass = '', $port = 3306)
     {
         $this->db = $db;
         $this->port = $port;
