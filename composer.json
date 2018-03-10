@@ -1,29 +1,28 @@
 {
-  "name": "agerecompany/db",
+  "name": "popov/db",
   "description": "Simple PDO wrapper with support multiple insert/update",
   "type": "library",
   "license": "MIT",
   "keywords": [
     "db",
     "pdo",
-    "agere"
+    "multiple save"
   ],
   "authors": [
     {
-      "name": "Sergiy Popov",
-      "email": "popow.sergiy@gmail.com",
-      "homepage": "http://agere.com.ua/",
+      "name": "Serhii Popov",
+      "email": "popow.serhii@gmail.com",
+      "homepage": "http://stagem.com.ua/",
       "role": "Developer"
     }
   ],
   "minimum-stability": "stable",
   "require": {
-    "php": ">=5.5",
-    "zendframework/zend-stdlib": "^2.7"
+    "php": ">=5.5"
   },
   "autoload": {
     "psr-4": {
-      "Agere\\Db\\": "src/"
+      "Popov\\Db\\": "src/"
     }
   }
 }
