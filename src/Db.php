@@ -2,12 +2,12 @@
 /**
  * Class for working with database
  *
- * @category Agere
- * @package Agere_Db
- * @author Popov Sergiy <popov@agere.com.ua>
+ * @category Popov
+ * @package Popov_Db
+ * @author Serhii Popov <popow.serhii@gmail.com>
  * @datetime: 23.07.2013 14:16
  */
-namespace Agere\Db;
+namespace Popov\Db;
 
 use PDO;
 use PDOStatement;

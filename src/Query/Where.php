@@ -1,7 +1,7 @@
 <?php
-namespace Agere\Db\Query;
+namespace Popov\Db\Query;
 
-use Agere\Db\Db;
+use Popov\Db\Db;
 
 /**
  * Some ORM for generation WHERE.
