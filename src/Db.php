@@ -135,16 +135,18 @@ class Db
     public function query($query)
     {
         $this->query = $query;
-        $res = $this->lazyLoad()->query($query);
-        if (!$res) {
+        $stm = $this->lazyLoad()->query($query);
+        if (!$stm) {
             if ($this->pdo->errorCode() != 0000) {
                 throw new Exception\RuntimeException(implode(' | ', $this->pdo->errorInfo()));
             }
         }
-        $this->result = $res;
-        $this->numRows = $res->rowCount();
+        $this->result = $stm;
+        // @see https://stackoverflow.com/a/883382/1335142
+        $this->numRows = $stm->rowCount();
+        //$this->numRows = $stm->fetchColumn();
 
-        return $res;
+        return $stm;
     }
 
     /**
@@ -355,6 +357,8 @@ class Db
         $stm = $this->lazyLoad()->prepare($sql);
         $stm->execute($parameters);
         $array = $stm->fetchAll(\PDO::FETCH_ASSOC);
+        // @see https://stackoverflow.com/a/883382/1335142
+        $this->numRows = $stm->rowCount();
 
         return $array;
     }
