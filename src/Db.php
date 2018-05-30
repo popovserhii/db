@@ -46,15 +46,7 @@ class Db
      */
     const TEMPLATES_WITHOUT = 'createTemplatesWithout';
 
-    private $db = '';
-
-    private $port = '';
-
-    private $host = '';
-
-    private $user = '';
-
-    private $pass = '';
+    private $config = [];
 
     private $dsn = '';
 
@@ -77,28 +69,20 @@ class Db
      */
     public static $mysqlWords = ["CURRENT_TIMESTAMP", "NOW()", "NULL"];
 
-    public function __construct($db = '', $host = '', $user = '', $pass = '', $port = 3306)
+    public function __construct($config)
     {
-        $this->db = $db;
-        $this->port = $port;
-        $this->host = $host;
-        $this->user = $user;
-        $this->pass = $pass;
+        $this->config = $config;
     }
 
     /**
      * Connect to database
      *
-     * @param string $db
-     * @param string $host
-     * @param string $username
-     * @param string $pass
-     * @param int $port
+     * @param string $config
      * @return Db
      */
-    public static function connectDb($db = '', $host = '', $username = '', $pass = '', $port = 3306)
+    public static function connectDb($config)
     {
-        return new self($db, $host, $username, $pass, $port);
+        return new self($config);
     }
 
     public function setPdo($pdo)
@@ -119,13 +103,13 @@ class Db
             return $this->pdo;
         }
 
-        $options = [
-            \PDO::MYSQL_ATTR_INIT_COMMAND => 'SET NAMES utf8',
-            \PDO::MYSQL_ATTR_FOUND_ROWS => true,
-        ];
-
         $this->dsn = $this->prepareDsn();
-        $this->pdo = new \PDO($this->dsn, $this->user, $this->pass, $options);
+        $this->pdo = new \PDO(
+            $this->dsn,
+            $this->config['username'],
+            $this->config['password'],
+            $this->config['options']
+        );
         $this->pdo->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
 
         return $this->pdo;
@@ -133,11 +117,17 @@ class Db
 
     protected function prepareDsn()
     {
-        $portDsn = ";port={$this->port}";
-        if (!$this->port) {
-            $portDsn = '';
+        $portDsn = '';
+        if (isset($this->config['port'])) {
+            $portDsn = ";port={$this->config['port']}";
         }
-        $dsn = "mysql:dbname={$this->db};host={$this->host}{$portDsn}";
+        $dsn = sprintf(
+            'mysql:dbname=%s;host=%s%s',
+            $this->config['database'],
+            $this->config['hostname'],
+            $portDsn
+        );
+        //$dsn = "mysql:dbname={$this->config['database']};host={$this->config['hostname']}{$portDsn}";
 
         return $dsn;
     }
@@ -256,7 +246,7 @@ class Db
         return $this->lastInsertId();
     }
 
-    public function updateField($table, $fields, $where = '1>0', $htmlAdaptation = null)
+    public function updateField($table, $fields, $where = '1>0', $htmlAdaptation = false)
     {
         if ($htmlAdaptation === true) {
             foreach ($fields as $key => $value) {
