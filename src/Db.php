@@ -121,11 +121,13 @@ class Db
         if (isset($this->config['port'])) {
             $portDsn = ";port={$this->config['port']}";
         }
+
         $dsn = sprintf(
-            'mysql:dbname=%s;host=%s%s',
+            'mysql:dbname=%s;host=%s%s;;charset=%w',
             $this->config['database'],
             $this->config['hostname'],
-            $portDsn
+            $portDsn,
+            $this->config['charset'] ?? 'utf8'
         );
         //$dsn = "mysql:dbname={$this->config['database']};host={$this->config['hostname']}{$portDsn}";
 
