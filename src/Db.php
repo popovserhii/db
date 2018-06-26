@@ -69,7 +69,7 @@ class Db
      */
     public static $mysqlWords = ["CURRENT_TIMESTAMP", "NOW()", "NULL"];
 
-    public function __construct($config)
+    public function __construct(array $config = null)
     {
         $this->config = $config;
     }
@@ -492,7 +492,7 @@ class Db
      * @param array $values
      * @return string
      */
-    private function _addValue($values)
+    protected function _addValue($values)
     {
         $method = $this->getSaveMode();
         $value_array = [];
@@ -567,7 +567,7 @@ class Db
     }
 
     /**
-     * For example, when you call $db->prepare($param), return $this->pdo->prepare($param).
+     * For example, $db->prepare($param), equivalent to $db->getPdo()->prepare($param).
      *
      * @param string $name
      * @param mixed $arguments
