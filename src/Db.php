@@ -440,12 +440,13 @@ class Db
      * Ignore the first field, as it should be unique and should not be changed.
      * Generates set to ON DUPLICATE KEY UPDATE, the type field = VALUES (field), field2 = VALUES (field2), ...
      */
-    private function _onDuplicateKeyUpdateField($fields_str, $idField)
+    private function _onDuplicateKeyUpdateField($fieldsStr, $idField)
     {
-        $fields_array = explode(',', $fields_str);
+        $fields_array = explode(',', $fieldsStr);
         $fields = [];
         foreach ($fields_array as $field) {
             if ($field == $idField) {
+                $fields[] = " {$idField} = LAST_INSERT_ID($idField)";
                 continue;
             }
             $fields[] = " {$field} = VALUES({$field})";
