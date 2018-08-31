@@ -468,7 +468,7 @@ class Db
             $fields_array[] = $field;
         }
 
-        return (string) implode(',', $fields_array);
+        return '`' . implode('`, `', $fields_array) . '`';
     }
 
     /**
