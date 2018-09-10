@@ -445,7 +445,7 @@ class Db
         $fields_array = explode(',', $fieldsStr);
         $fields = [];
         foreach ($fields_array as $field) {
-            if ($field == $idField) {
+            if (trim($field, '` ') == $idField) {
                 $fields[] = " {$idField} = LAST_INSERT_ID($idField)";
                 continue;
             }
