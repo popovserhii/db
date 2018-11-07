@@ -236,7 +236,7 @@ class Db
         return implode(',', $set);
     }
 
-    public function addField($table, $fields, $htmlAdaptation = null)
+    public function add($table, $fields, $htmlAdaptation = null)
     {
         if ($htmlAdaptation === true) {
             foreach ($fields as $key => $value) {
@@ -250,7 +250,7 @@ class Db
         return $this->lastInsertId();
     }
 
-    public function updateField($table, $fields, $where = '1>0', $htmlAdaptation = false)
+    public function update($table, $fields, $where = '1>0', $htmlAdaptation = false)
     {
         if ($htmlAdaptation === true) {
             foreach ($fields as $key => $value) {
