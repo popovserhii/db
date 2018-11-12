@@ -228,9 +228,13 @@ class Db
     {
         $set = [];
         foreach ($fields as $field => $value) {
-            (!in_array($value, self::$mysqlWords))
-                ? $set[] = "`" . $field . "`='" . $this->escapeQuery($value) . "'"
-                : $set[] = "`" . $field . "`=" . $value;
+
+            #(!in_array($value, self::$mysqlWords))
+            #    ? $set[] = "`" . $field . "`= ? "
+            #    : $set[] = "`" . $field . "`=" . $value;
+
+                $set[] = "`" . $field . "`= ? ";
+
         }
 
         return implode(',', $set);
@@ -252,15 +256,31 @@ class Db
 
     public function update($table, $fields, $where = '1>0', $htmlAdaptation = false)
     {
+        $this->values = [];
         if ($htmlAdaptation === true) {
             foreach ($fields as $key => $value) {
                 $value = htmlspecialchars_decode($value, ENT_QUOTES);
                 $fields [$key] = htmlspecialchars($value, ENT_QUOTES);
             }
         }
-        $query = 'UPDATE `' . $table . '` SET ' . $this->addSet($fields) . ' WHERE ' . $where;
 
-        return $this->exec($query);
+        //$sql = 'UPDATE `' . $table . '` SET (' . $this->_addValue($fields) . ') WHERE ' . $where;
+        $sql = 'UPDATE `' . $table . '` SET ' . $this->addSet($fields) . ' WHERE ' . $where;
+
+
+        $values = array_values($fields); // reset array indexes
+        $query = $this->lazyLoad()->prepare($sql);
+        $query->execute($values);
+
+        return $query->rowCount();
+
+
+        /*$sql = "INSERT INTO `{$table}` ( {$this->addFields($field)} ) VALUES ({$this->_addValue($field)}) ON DUPLICATE KEY UPDATE {$this->_onDuplicateKeyUpdateField($this->addFields($field), $idField)}";
+        $fields = array_values($field); // reset array indexes
+        $query = $this->lazyLoad()->prepare($sql);
+        $query->execute($fields);
+
+        return $this->exec($query);*/
     }
 
     /**
