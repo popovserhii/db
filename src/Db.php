@@ -248,8 +248,11 @@ class Db
                 $fields [$key] = htmlspecialchars($value, ENT_QUOTES);
             }
         }
-        $query = 'INSERT INTO `' . $table . '` SET ' . $this->addSet($fields);
-        $this->exec($query);
+        $sql = 'INSERT INTO `' . $table . '` SET ' . $this->addSet($fields);
+        //$this->exec($query);
+        $values = array_values($fields); // reset array indexes
+        $query = $this->lazyLoad()->prepare($sql);
+        $query->execute($values);
 
         return $this->lastInsertId();
     }
