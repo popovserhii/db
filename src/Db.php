@@ -11,7 +11,6 @@ namespace Popov\Db;
 
 use PDO;
 use PDOStatement;
-use Zend\Stdlib\Exception;
 
 class Db
 {
@@ -108,7 +107,7 @@ class Db
             $this->dsn,
             $this->config['username'],
             $this->config['password'],
-            $this->config['options']
+            $this->config['options'] ?? []
         );
         $this->pdo->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
 
@@ -123,13 +122,12 @@ class Db
         }
 
         $dsn = sprintf(
-            'mysql:dbname=%s;host=%s%s;;charset=%w',
+            'mysql:dbname=%s;host=%s%s;charset=%s',
             $this->config['database'],
             $this->config['hostname'],
             $portDsn,
-            $this->config['charset'] ?? 'utf8'
+            $this->config['charset'] ?? 'utf8',
         );
-        //$dsn = "mysql:dbname={$this->config['database']};host={$this->config['hostname']}{$portDsn}";
 
         return $dsn;
     }
@@ -140,7 +138,7 @@ class Db
         $stm = $this->lazyLoad()->query($query);
         if (!$stm) {
             if ($this->pdo->errorCode() != 0000) {
-                throw new Exception\RuntimeException(implode(' | ', $this->pdo->errorInfo()));
+                throw new \RuntimeException(implode(' | ', $this->pdo->errorInfo()));
             }
         }
         $this->result = $stm;
@@ -179,7 +177,7 @@ class Db
 
     /**
      * Returns an associative array of values from one sample.
-     * Unlike the $ this-> arAll (), the value is not added to the new array,
+     * Unlike the $this->fetchAll(), the value is not added to the new array,
      * but rather for the unique ID number of the array is set to the first value
      * in the "SELECT first, second FROM table"
      *
@@ -233,14 +231,14 @@ class Db
             #    ? $set[] = "`" . $field . "`= ? "
             #    : $set[] = "`" . $field . "`=" . $value;
 
-                $set[] = "`" . $field . "`= ? ";
+            $set[] = "`" . $field . "`= ? ";
 
         }
 
         return implode(',', $set);
     }
 
-    public function add($table, $fields, $htmlAdaptation = null)
+    public function add($table, $fields, $htmlAdaptation = false)
     {
         if ($htmlAdaptation === true) {
             foreach ($fields as $key => $value) {
