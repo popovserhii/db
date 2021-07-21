@@ -14,37 +14,6 @@ use PDOStatement;
 
 class Db
 {
-    /**
-     * Mode for INSERT/UPDATE
-     *
-     * @var string
-     */
-    private $_updateMode = Db::TEMPLATES_UNNAMED;
-
-    /**
-     * Named template.
-     * The value corresponds to the name of the method that will be invoked to convert
-     *
-     * @var string
-     */
-    const TEMPLATES_NAMED = 'createTemplatesNamed';
-
-    /**
-     * Unnamed template.
-     * The value corresponds to the name of the method that will be invoked to convert
-     *
-     * @var string
-     */
-    const TEMPLATES_UNNAMED = 'createTemplatesUnnamed';
-
-    /**
-     * Lack of templates - a direct path SQL-injection.
-     * The value corresponds to the name of the method that will be invoked to convert
-     *
-     * @var string
-     */
-    const TEMPLATES_WITHOUT = 'createTemplatesWithout';
-
     private $config = [];
 
     private $dsn = '';
@@ -61,16 +30,10 @@ class Db
     /** Array with all data for execute query */
     protected $values;
 
-    /**
-     * MySQL keywords
-     *
-     * @var array
-     */
-    public static $mysqlWords = ["CURRENT_TIMESTAMP", "NOW()", "NULL"];
-
     public function __construct(array $config = null)
     {
         $this->config = $config;
+        $this->queryMaker = new QueryMaker($this);
     }
 
     /**
@@ -132,19 +95,23 @@ class Db
         return $dsn;
     }
 
+    public function getQueryMaker()
+    {
+        return $this->queryMaker;
+    }
+    
     public function query($query)
     {
-        $this->query = $query;
+        #$this->query = $query;
         $stm = $this->lazyLoad()->query($query);
-        if (!$stm) {
+        /*if (!$stm) {
             if ($this->pdo->errorCode() != 0000) {
                 throw new \RuntimeException(implode(' | ', $this->pdo->errorInfo()));
             }
-        }
-        $this->result = $stm;
+        }*/
+        //$this->result = $stm;
         // @see https://stackoverflow.com/a/883382/1335142
-        $this->numRows = $stm->rowCount();
-        //$this->numRows = $stm->fetchColumn();
+        #$this->numRows = $stm->rowCount();
 
         return $stm;
     }
@@ -222,68 +189,6 @@ class Db
         ]);
     }
 
-    public function addSet($fields)
-    {
-        $set = [];
-        foreach ($fields as $field => $value) {
-
-            #(!in_array($value, self::$mysqlWords))
-            #    ? $set[] = "`" . $field . "`= ? "
-            #    : $set[] = "`" . $field . "`=" . $value;
-
-            $set[] = "`" . $field . "`= ? ";
-
-        }
-
-        return implode(',', $set);
-    }
-
-    public function add($table, $fields, $htmlAdaptation = false)
-    {
-        if ($htmlAdaptation === true) {
-            foreach ($fields as $key => $value) {
-                $value = htmlspecialchars_decode($value, ENT_QUOTES);
-                $fields [$key] = htmlspecialchars($value, ENT_QUOTES);
-            }
-        }
-        $sql = 'INSERT INTO `' . $table . '` SET ' . $this->addSet($fields);
-        //$this->exec($query);
-        $values = array_values($fields); // reset array indexes
-        $query = $this->lazyLoad()->prepare($sql);
-        $query->execute($values);
-
-        return $this->lastInsertId();
-    }
-
-    public function update($table, $fields, $where = '1>0', $htmlAdaptation = false)
-    {
-        $this->values = [];
-        if ($htmlAdaptation === true) {
-            foreach ($fields as $key => $value) {
-                $value = htmlspecialchars_decode($value, ENT_QUOTES);
-                $fields [$key] = htmlspecialchars($value, ENT_QUOTES);
-            }
-        }
-
-        //$sql = 'UPDATE `' . $table . '` SET (' . $this->_addValue($fields) . ') WHERE ' . $where;
-        $sql = 'UPDATE `' . $table . '` SET ' . $this->addSet($fields) . ' WHERE ' . $where;
-
-
-        $values = array_values($fields); // reset array indexes
-        $query = $this->lazyLoad()->prepare($sql);
-        $query->execute($values);
-
-        return $query->rowCount();
-
-
-        /*$sql = "INSERT INTO `{$table}` ( {$this->addFields($field)} ) VALUES ({$this->_addValue($field)}) ON DUPLICATE KEY UPDATE {$this->_onDuplicateKeyUpdateField($this->addFields($field), $idField)}";
-        $fields = array_values($field); // reset array indexes
-        $query = $this->lazyLoad()->prepare($sql);
-        $query->execute($fields);
-
-        return $this->exec($query);*/
-    }
-
     /**
      * Returns last inserted id in the database
      *
@@ -294,12 +199,12 @@ class Db
         return $this->pdo->lastInsertId();
     }
 
-    public function minVal($field, $table)
+    public function minVal($table, $field)
     {
         return $this->query("SELECT MIN({$field}) FROM {$table}")->fetchColumn();
     }
 
-    public function maxVal($field, $table)
+    public function maxVal($table, $field)
     {
         return $this->query("SELECT MAX({$field}) FROM {$table}")->fetchColumn();
     }
@@ -313,29 +218,97 @@ class Db
         return $this->numRows;
     }
 
-    /*public function error($key = 2)
-    {
-        $error = $this->pdo->errorInfo();
-        //\Rotor\ZEngine::dump($error_array);
-        //$this->Pdo->errorCode () != 0000)
-        // в случае ошибки SQL выражения выведем сообщене об ошибке
-        return $error[$key];
-    }*/
-
     /**
-     * @todo
+     * Ger refernces per table in current database
+     *
+     * @return array
      */
-    public function listTables()
+    public function listReferences()
     {
-        // not implemented yed
+        $schema = $this->fetchDatabase();
+
+        $references = $this->fetchAll("SELECT
+            kcu.referenced_table_name, 
+            kcu.referenced_column_name,
+            kcu.table_name AS foreign_table_name,    
+            kcu.column_name AS foreign_column_name,    
+            kcu.constraint_name
+        FROM
+            information_schema.key_column_usage kcu
+        WHERE
+            kcu.referenced_table_name IS NOT NULL
+            AND kcu.table_schema = '{$schema}'
+        ORDER BY kcu.referenced_table_name, kcu.referenced_column_name
+        ");
+
+        $grouped = [];
+        foreach ($references as $reference) {
+            $grouped[$reference['referenced_table_name']][] = $reference;
+        }
+
+        return $grouped;
     }
 
     /**
-     * @todo
+     * Get list of database's tables
+     *
+     * @return array
      */
-    function listFields($tableName)
+    public function listTables()
     {
-        // not implemented yet
+        $schema = $this->fetchDatabase();
+
+        $rows = $this->fetchAll("SELECT table_name, table_rows 
+            FROM information_schema.tables 
+            WHERE table_schema = '{$schema}' 
+            ORDER BY table_name
+        ");
+
+        $tables = [];
+        foreach ($rows as $row) {
+            $tables[$row['table_name']] = $row['table_rows'];
+        }
+
+        return $tables;
+    }
+
+    /**
+     * Get list of table's columns
+     *
+     * @param string $table
+     *
+     * @return mixed
+     */
+    public function listColumns(string $table)
+    {
+        static $columns = [];
+
+        if (isset($columns[$table])) {
+            return $columns[$table];
+        }
+
+        $schema = $this->fetchDatabase();
+        $result = $this->originConn->fetchAll("SELECT table_name, column_name, column_default
+            FROM information_schema.columns
+            WHERE table_schema = '{$schema}'
+              AND table_name = '{$table}'
+        ");
+
+        foreach ($result as $column) {
+            $columns[$column['table_name']][] = $column['column_name'];
+        }
+
+        return $columns[$table];
+    }
+
+    /**
+     * Fetch current selected database
+     *
+     * @return string
+     */
+    public function fetchDatabase()
+    {
+        return $this->query('SELECT DATABASE()')->fetchColumn();
     }
 
     /**
@@ -355,12 +328,12 @@ class Db
      *
      * @param string $sql
      * @param array $parameters
+     *
      * @return mixed
      */
-    public function fetchOne($sql, array $parameters = [])
+    public function fetchOne(string $sql, array $parameters = [])
     {
         $statement = $this->lazyLoad()->prepare($sql, [\PDO::ATTR_CURSOR => \PDO::CURSOR_FWDONLY]);
-        //$statement = $this->lazyLoad()->prepare($sql);
         $statement->execute($parameters);
         $result = $statement->fetch(\PDO::FETCH_ASSOC);
 
@@ -381,7 +354,7 @@ class Db
         $stm->execute($parameters);
         $array = $stm->fetchAll(\PDO::FETCH_ASSOC);
         // @see https://stackoverflow.com/a/883382/1335142
-        $this->numRows = $stm->rowCount();
+        #$this->numRows = $stm->rowCount();
 
         return $array;
     }
@@ -392,11 +365,12 @@ class Db
      * $sql = "SELECT id, name FROM table WHERE id = ?";
      * $parameters = array(524);
      *
-     * @param $sql
+     * @param string $sql
      * @param array $parameters
+     *
      * @return array
      */
-    public function fetchDropDown($sql, array $parameters = [])
+    public function fetchDropDown(string $sql, array $parameters = [])
     {
         $result = $this->fetchAll($sql, $parameters);
         $data = [];
@@ -405,6 +379,51 @@ class Db
         }
 
         return $data;
+    }
+
+    /**
+     * INSERT new row into a table
+     *
+     * @param string $table
+     * @param array $fields
+     *
+     * @return string
+     */
+    public function add(string $table, array $fields)
+    {
+        $this->values = [];
+        //$sql = 'INSERT INTO `' . $table . '` SET ' . $this->addSet($fields);
+        $sql = $this->queryMaker->insert($table, $fields);
+
+        //$this->exec($query);
+        $values = array_values($fields); // reset array indexes
+        $query = $this->lazyLoad()->prepare($sql);
+        $query->execute($values);
+
+        return $this->lastInsertId();
+    }
+
+    /**
+     * UPDATE a table accorging to WHERE condition
+     *
+     * @param string $table
+     * @param array $fields
+     * @param string $where
+     *
+     * @return int
+     */
+    public function update(string $table, array $fields, $where = '1>0')
+    {
+        $this->values = [];
+        //$sql = 'UPDATE `' . $table . '` SET (' . $this->_addValue($fields) . ') WHERE ' . $where;
+        //$sql = 'UPDATE `' . $table . '` SET ' . $this->addSet($fields) . ' WHERE ' . $where;
+        $sql = $this->queryMaker->update($table, $fields, $where);
+
+        $values = array_values($fields); // reset array indexes
+        $query = $this->lazyLoad()->prepare($sql);
+        $query->execute($values);
+
+        return $query->rowCount();
     }
 
     /**
@@ -421,7 +440,10 @@ class Db
     public function save($table, $field, $idField = 'id')
     {
         unset($this->values);
-        $sql = "INSERT INTO `{$table}` ( {$this->addFields($field)} ) VALUES ({$this->_addValue($field)}) ON DUPLICATE KEY UPDATE {$this->_onDuplicateKeyUpdateField($this->addFields($field), $idField)}";
+
+        //$sql = "INSERT INTO `{$table}` ( {$this->addFields($field)} ) VALUES ({$this->_addValue($field)}) ON DUPLICATE KEY UPDATE {$this->_onDuplicateKeyUpdateField($this->addFields($field), $idField)}";
+        $sql = $this->queryMaker->save($table, $field, $idField = 'id');
+
         $fields = array_values($field); // reset array indexes
         $query = $this->lazyLoad()->prepare($sql);
         $query->execute($fields);
@@ -433,10 +455,11 @@ class Db
      * Multiple INSERT/UPDATE.
      * In the $fields transferred multidimensional array.
      * One item which represents the right table in the database.
-     * WARNING! Db::multipleUpdate() works only while Db::TEMPLATES_WITHOUT
      *
-     * @param string $table Таблиця для вставки даних
-     * @param array $fields Многомірний масив даних
+     * WARNING! Db::multipleUpdate() works only when Db::TEMPLATES_WITHOUT
+     *
+     * @param string $table Table to insert data
+     * @param array $fields Multidimensional array
      *  1 - array(0 => array('id' => 65, 'name' => Senya, 'lang' => 'ua'), // If the field is a database will UPDATE
      *  2 - array('id' => 0, 'name' => Senya, 'lang' => 'ua')) // If the field is not in the database will INSERT
      *
@@ -448,121 +471,13 @@ class Db
     public function multipleSave($table, $fields, $idField = 'id')
     {
         unset($this->values);
-        $sql = "INSERT INTO `{$table}` ( {$this->addFields($fields[0])} ) VALUES {$this->addValues($fields)} ON DUPLICATE KEY UPDATE {$this->_onDuplicateKeyUpdateField($this->addFields($fields[0]), $idField)};";
+        //$sql = "INSERT INTO `{$table}` ( {$this->addFields($fields[0])} ) VALUES {$this->addValues($fields)} ON DUPLICATE KEY UPDATE {$this->_onDuplicateKeyUpdateField($this->addFields($fields[0]), $idField)};";
+        $sql = $this->queryMaker->multipleSave($table, $field, $idField = 'id');
         //\Zend\Debug\Debug::dump([$fields, $this->values, $sql]); die(__METHOD__);
         // run sql
         $query = $this->lazyLoad()->prepare($sql);
 
         return $query->execute($this->values);
-    }
-
-    /**
-     * Gets tape field names for the condition "ON DUPLICATE KEY UPDATE".
-     * Ignore the first field, as it should be unique and should not be changed.
-     * Generates set to ON DUPLICATE KEY UPDATE, the type field = VALUES (field), field2 = VALUES (field2), ...
-     */
-    private function _onDuplicateKeyUpdateField($fieldsStr, $idField)
-    {
-        $fields_array = explode(',', $fieldsStr);
-        $fields = [];
-        foreach ($fields_array as $field) {
-            if (trim($field, '` ') == $idField) {
-                $fields[] = " {$idField} = LAST_INSERT_ID($idField)";
-                continue;
-            }
-            $fields[] = " {$field} = VALUES({$field})";
-        }
-
-        return (string) implode(',', $fields);
-    }
-
-    /**
-     * Generates a set of fields that need to be updated or inserted.
-     * For the terms "INSERT INTO".
-     * @param $fields
-     * @return string
-     */
-    protected function addFields($fields)
-    {
-        $fields_array = [];
-        foreach ($fields as $field => $value) {
-            $fields_array[] = $field;
-        }
-
-        return '`' . implode('`, `', $fields_array) . '`';
-    }
-
-    /**
-     * Handles multi-dimensional array of data and generates a set of groups "(1, 1), (2, 12), (3, 0.5)"
-     *
-     * @param $fields
-     * @return string
-     */
-    protected function addValues($fields)
-    {
-        $values_array = [];
-        foreach ($fields as $values) {
-            $values_array[] = '(' . $this->_addValue($values) . ')';
-        }
-
-        return implode(',', $values_array);
-    }
-
-    /**
-     * Handles one-dimensional array of data and generates a set for one group.
-     *
-     * @param array $values
-     * @return string
-     */
-    protected function _addValue($values)
-    {
-        $method = $this->getSaveMode();
-        $value_array = [];
-        foreach ($values as $key => $value) {
-            $value_array[] = $this->$method($key, $value);
-        }
-
-        return implode(',', $value_array);
-    }
-
-    /**
-     * Generates a named template.
-     * $db->prepare("INSERT INTO folks (name, addr, city) value (:name, :addr, :city)");
-     *
-     * @param string $key Array key
-     * @param string $value Array value
-     * @return string $pattern
-     */
-    protected function createTemplatesNamed($key, $value = null)
-    {
-        return " :{$key}";
-    }
-
-    /**
-     * Generates a unnamed template.
-     *
-     * @param string $key Array key
-     * @param string $value Array value
-     * @return string $pattern
-     */
-    protected function createTemplatesUnnamed($key = null, $value = null)
-    {
-        $this->values[] = $value;
-
-        return ' ? ';
-    }
-
-    /**
-     * Generates no template SQL.
-     * Open to attacks by building SQL injection.
-     *
-     * @param string $key Array key
-     * @param string $value Array value
-     * @return string $pattern
-     */
-    protected function createTemplatesWithout($key, $value)
-    {
-        return '"' . $value . '"'; // @todo use PDO think about
     }
 
     /**
@@ -573,7 +488,9 @@ class Db
      */
     public function setSaveMode($method)
     {
-        $this->_updateMode = $method;
+        $this->queryMaker->setSaveMode($method);
+
+        return $this;
     }
 
     /**
@@ -585,7 +502,7 @@ class Db
      */
     public function getSaveMode()
     {
-        return $this->_updateMode;
+        return $this->queryMaker->getSaveMode();
     }
 
     /**
