@@ -98,7 +98,7 @@ class QueryMaker
 
     public function update($table, $fields, $where = '1>0')
     {
-        return 'UPDATE `' . $table . '` SET ' . $this->_addValue($fields) . ' WHERE ' . $where;
+        return 'UPDATE `' . $table . '` SET ' . $this->addUpdateValues($fields) . ' WHERE ' . $where;
     }
 
     /**
@@ -202,6 +202,26 @@ class QueryMaker
         $valuesArray = [];
         foreach ($fields as $values) {
             $valuesArray[] = '(' . $this->_addValue($values) . ')';
+        }
+
+        return implode(',', $valuesArray);
+    }
+
+    /**
+     * Handles multi-dimensional array of data and generates a string like "status = 2, price = 250"
+     *
+     * @param $fields
+     * @return string
+     */
+    protected function addUpdateValues($fields)
+    {
+        $method = $this->getSaveMode();
+
+        $valuesArray = [];
+        foreach ($fields as $field => $value) {
+            $valuesArray[] = '`' . $field . '`=' . $this->$method($field, $value);
+
+            //$valuesArray[] = '(' . $this->_addValue($values) . ')';
         }
 
         return implode(',', $valuesArray);
