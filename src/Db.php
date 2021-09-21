@@ -199,6 +199,11 @@ class Db
         return $this->pdo->lastInsertId();
     }
 
+    public function count($table, $field = '*')
+    {
+        return $this->query("SELECT COUNT($field) as table_rows FROM {$table}")->fetchColumn();
+    }
+
     public function minVal($table, $field)
     {
         return $this->query("SELECT MIN({$field}) FROM {$table}")->fetchColumn();
